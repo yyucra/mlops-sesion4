@@ -1,0 +1,43 @@
+# Integracion y entrega continuas de la API de fuga: en cada cambio, probar y construir la imagen.
+# En la rama main, ademas, la publica en GitHub Container Registry (ghcr.io).
+# Tambien se ejecuta cuando Airflow avisa que se aprobo un modelo (evento modelo-aprobado).
+name: api-fuga
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [modelo-aprobado]      # lo envia la tarea avisar_cd del DAG liberacion_canary
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Modelo aprobado por Airflow
+        if: github.event_name == 'repository_dispatch'
+        run: echo "Version aprobada ${{ github.event.client_payload.version }} de ${{ github.event.client_payload.modelo }}"
+      - run: pytest
+
+  imagen:
+    needs: pruebas          # si una prueba falla, no se construye nada
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir la imagen
+        run: docker build -t api-fuga:${{ github.sha }} .
+      - name: Publicar en ghcr.io (solo en main)
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          DESTINO="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/api-fuga:${{ github.sha }}"
+          docker tag api-fuga:${{ github.sha }} "$DESTINO"
+          docker push "$DESTINO"
