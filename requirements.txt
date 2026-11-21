@@ -1,0 +1,8 @@
+# Lo que necesita la API para ejecutarse (es lo que se instala en la imagen Docker)
+fastapi==0.165.0
+uvicorn==0.54.0
+pydantic==2.14.4
+mlflow-skinny==3.18.0
+scikit-learn==1.9.1
+pandas==2.3.3
+skops==0.16.0

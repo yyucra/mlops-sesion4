@@ -1,0 +1,7 @@
+# Entorno completo del laboratorio: la API, MLflow, Airflow y las pruebas
+-r requirements.txt
+mlflow==3.18.0
+pytest==9.2.0
+httpx2==2.16.2
+requests==2.34.2
+apache-airflow==3.4.0
